@@ -45,10 +45,18 @@ export const useAudio = () => {
     setOscillator(undefined)
   }, [audioContext, isPlaying, oscillator]);
 
+  const changeFrequency = useCallback((frequency: number) => {
+    if (oscillator === undefined) {
+      return;
+    }
+    oscillator.frequency.setValueAtTime(frequency, audioContext!.currentTime);
+  }, [audioContext, oscillator])
+
   return {
     isPlaying,
     setupAudio,
     playAudio,
     stopAudio,
+    changeFrequency
   };
 };

@@ -181,7 +181,7 @@ function App() {
         </div>
       </div>
       <div className={"relative inline-block"}>
-        <video ref={videoRef} autoPlay muted className={"object-cover"} />
+        <video ref={videoRef} autoPlay muted playsInline className={"object-cover"} />
         <canvas ref={canvasRef} className={"size-full absolute top-0 left-0"} />
       </div>
       <div className={"flex gap-4"}>

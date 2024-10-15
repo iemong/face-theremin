@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button.tsx";
 import { useToast } from "@/hooks/use-toast.ts";
 import { useAudio } from "@/hooks/use-audio.ts";
-import { Slider } from "@/components/ui/slider.tsx";
 import * as faceapi from "face-api.js";
 import {renderPermissionInstructions} from "@/components/PermissionInstructions.tsx";
 
@@ -100,23 +99,6 @@ const getNote = (frequency: number) => {
   return closestNote.note;
 };
 
-const harryPotterTheme = [
-  { note: "B3", duration: 500 },
-  { note: "E4", duration: 500 },
-  { note: "G4", duration: 500 },
-  { note: "F#4/Gb4", duration: 500 },
-  { note: "E4", duration: 1000 },
-  { note: "B4", duration: 500 },
-  { note: "A4", duration: 2000 },
-  { note: "F#4/Gb4", duration: 1000 },
-  { note: "E4", duration: 500 },
-  { note: "G4", duration: 500 },
-  { note: "F#4/Gb4", duration: 500 },
-  { note: "D#4/Eb4", duration: 500 },
-  { note: "F4", duration: 2000 },
-  { note: "B3", duration: 500 },
-];
-
 function App() {
   const [permissionStatus, setPermissionStatus] =
     useState<PermissionState>("prompt");
@@ -178,23 +160,6 @@ function App() {
     setFrequency(newValue[0]);
     changeFrequency(newValue[0]);
     setCurrentNote(getNote(frequency));
-  };
-
-  const [currentThemeIndex, setCurrentThemeIndex] = useState(0);
-
-  const playNextNote = () => {
-    if (currentThemeIndex < harryPotterTheme.length) {
-      const nextNote = harryPotterTheme[currentThemeIndex];
-      const nextFreq = noteFrequencies.find(
-        (nf) => nf.note === nextNote.note,
-      )?.freq;
-      handleFrequencyChange([nextFreq!]);
-      setCurrentThemeIndex(currentThemeIndex + 1);
-    }
-  };
-
-  const resetTheme = () => {
-    setCurrentThemeIndex(0);
   };
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -298,13 +263,6 @@ function App() {
           <p>Frequency: {frequency.toFixed(2)} Hz</p>
           <p>Closest Note: {currentNote}</p>
         </div>
-        <Slider
-          defaultValue={[261.63]}
-          max={2093.0}
-          min={261.63}
-          value={[frequency]}
-          onValueChange={handleFrequencyChange}
-        />
       </div>
       <div className={'relative inline-block'}>
         <video ref={videoRef} autoPlay muted className={"object-cover"} />
@@ -317,13 +275,6 @@ function App() {
         ) : (
           <Button onClick={playAudio}>Play</Button>
         )}
-        <Button
-          onClick={playNextNote}
-          disabled={currentThemeIndex >= harryPotterTheme.length}
-        >
-          Play Next Note
-        </Button>
-        <Button onClick={resetTheme}>Reset Theme</Button>
         <Button onClick={isDetecting ? stopDetectingFace : startDetectingFace}>{isDetecting ? 'stop Detecting' : 'start Detecting'}</Button>
       </div>
     </main>

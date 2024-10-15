@@ -11,7 +11,7 @@ export const useAudio = () => {
 
   const createOscillator = useCallback((context: AudioContext) => {
     const osc = context.createOscillator();
-    osc.type = "sine";
+    osc.type = "sawtooth";
     osc.connect(context.destination);
     return osc;
   }, []);

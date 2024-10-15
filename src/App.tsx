@@ -1,10 +1,26 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Button } from "@/components/ui/button.tsx";
 import { useToast } from "@/hooks/use-toast.ts";
 import { useAudio } from "@/hooks/use-audio.ts";
 import * as faceapi from "face-api.js";
 import { renderPermissionInstructions } from "@/components/PermissionInstructions.tsx";
-import {getNote, getNoteInSolfege, mapRange, noteFrequencies} from "@/lib/utils.ts";
+import {
+  getNote,
+  getNoteInSolfege,
+  mapRange,
+  noteFrequencies,
+} from "@/lib/utils.ts";
+import {
+  MagicWandIcon,
+  PlayIcon,
+  SpeakerLoudIcon, SpeakerOffIcon,
+} from "@radix-ui/react-icons";
 
 const MIN_FREQUENCY = noteFrequencies.at(12 * 2 - 6)?.freq ?? 0;
 const MAX_FREQUENCY = noteFrequencies.at(12 * 3 + 6)?.freq ?? 0;
@@ -14,7 +30,7 @@ function App() {
     useState<PermissionState>("prompt");
   const videoRef = useRef<HTMLVideoElement>(null);
   const { toast } = useToast();
-  const [currentNote, setCurrentNote] = useState("A4");
+  // const [currentNote, setCurrentNote] = useState("A4");
 
   const setupCamera = async () => {
     try {
@@ -65,24 +81,29 @@ function App() {
   }, []);
 
   const [frequency, setFrequency] = useState(440);
+  const deferredFrequency = useDeferredValue(frequency);
   const [currentSolfege, setCurrentSolfege] = useState("ラ");
+  const deferredCurrentSolfege = useDeferredValue(currentSolfege);
 
-  const handleFrequencyChange = (newValue: number[]) => {
-    setFrequency(newValue[0]);
-    changeFrequency(newValue[0]);
-    const note = getNote(frequency);
-    setCurrentNote(note);
-    setCurrentSolfege(getNoteInSolfege(note));
-  };
+  const handleFrequencyChange = useCallback(
+    (newValue: number[]) => {
+      setFrequency(newValue[0]);
+      changeFrequency(newValue[0]);
+      const note = getNote(frequency);
+      // setCurrentNote(note);
+      setCurrentSolfege(getNoteInSolfege(note));
+    },
+    [changeFrequency, frequency],
+  );
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestIdRef = useRef<number | null>(null);
   const [isDetecting, setIsDetecting] = useState(false);
 
-  const setupFaceApi = async () => {
+  const setupFaceApi = useCallback(async () => {
     await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
     console.info("=== Setup face-api ===");
-  };
+  }, []);
 
   const setupCanvas = useCallback(() => {
     if (!canvasRef.current || !videoRef.current) {
@@ -116,12 +137,17 @@ function App() {
         const totalArea =
           videoRef.current!.videoWidth * videoRef.current!.videoHeight;
         const relativeArea = box.area / totalArea;
-        const mappedArea = mapRange(relativeArea, 0.04, 0.38, 0, 1);
+        // const mappedArea = mapRange(relativeArea, 0.04, 0.38, 0, 1);
         // const logArea = Math.log(mappedArea * 100 + 1) / Math.log(101);
         // const frequency =
         //   MIN_FREQUENCY + (MAX_FREQUENCY - MIN_FREQUENCY) * logArea;
-        const frequency = mapRange(mappedArea, 0, 1, MIN_FREQUENCY, MAX_FREQUENCY);
-        handleFrequencyChange([frequency]);
+        const frequency = mapRange(
+          relativeArea,
+          0.04,
+          0.38,
+          MIN_FREQUENCY,
+          MAX_FREQUENCY,
+        );
         // const resizedDetections = faceapi.resizeResults(detection, {
         //   width: canvasRef.current!.width,
         //   height: canvasRef.current!.height,
@@ -132,11 +158,12 @@ function App() {
         //   ctx?.clearRect(0, 0, canvas.width, canvas.height);
         //   faceapi.draw.drawDetections(canvasRef.current!, resizedDetections);
         // }
+        handleFrequencyChange([frequency]);
       }
       requestIdRef.current = requestAnimationFrame(detectFace);
     };
     setIsDetecting(true);
-    detectFace();
+    await detectFace();
   }, [handleFrequencyChange, isDetecting, setupCanvas]);
 
   const stopDetectingFace = useCallback(() => {
@@ -171,29 +198,45 @@ function App() {
   }, [startDetectingFace, isDetecting]);
 
   return (
-    <main className={"w-screen h-screen"}>
+    <main className={"w-screen h-screen relative"}>
       {renderPermissionInstructions(permissionStatus)}
-      <div className={"p-4"}>
-        <div className={"mb-2"}>
-          <p>Frequency: {frequency.toFixed(2)} Hz</p>
-          <p>Closest Note: {currentNote}</p>
-          <p>Solfege: {currentSolfege}</p>
-        </div>
-      </div>
-      <div className={"relative inline-block"}>
-        <video ref={videoRef} autoPlay muted playsInline className={"object-cover"} />
+      <div className={"relative w-screen h-screen"}>
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          playsInline
+          className={"object-cover size-full"}
+        />
         <canvas ref={canvasRef} className={"size-full absolute top-0 left-0"} />
       </div>
-      <div className={"flex gap-4"}>
-        <Button onClick={handleSetup}>Play</Button>
-        {isPlaying ? (
-          <Button onClick={stopAudio}>Stop</Button>
-        ) : (
-          <Button onClick={playAudio}>Play</Button>
-        )}
-        <Button onClick={isDetecting ? stopDetectingFace : startDetectingFace}>
-          {isDetecting ? "stop Detecting" : "start Detecting"}
-        </Button>
+      <div className={"p-4 absolute top-4 left-4"}>
+        <div className={"mb-2"}>
+          <p>Frequency: {deferredFrequency.toFixed(2)} Hz</p>
+          {/*<p>Closest Note: {currentNote}</p>*/}
+          <p>Solfege: {deferredCurrentSolfege}</p>
+        </div>
+        <div className={"flex gap-4"}>
+          <Button onClick={handleSetup}>
+            <PlayIcon aria-label={"Play"} />
+          </Button>
+          {isPlaying ? (
+            <Button onClick={stopAudio}>
+              <SpeakerLoudIcon aria-label={'SOUND ON'} />
+            </Button>
+          ) : (
+            <Button onClick={playAudio}>
+              <SpeakerOffIcon aria-label={'SOUND OFF'} />
+            </Button>
+          )}
+          <Button
+            onClick={isDetecting ? stopDetectingFace : startDetectingFace}
+            variant={"secondary"}
+          >
+            <MagicWandIcon className={"mr-2"} />
+            {isDetecting ? "STOP" : "START"}
+          </Button>
+        </div>
       </div>
     </main>
   );

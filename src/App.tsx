@@ -24,6 +24,8 @@ import {
 
 const MIN_FREQUENCY = noteFrequencies.at(12 * 2 - 6)?.freq ?? 0;
 const MAX_FREQUENCY = noteFrequencies.at(12 * 3 + 6)?.freq ?? 0;
+const FPS = 24; // 1秒あたりのフレーム数を30に設定
+const FRAME_INTERVAL = 1000 / FPS;
 
 function App() {
   const [permissionStatus, setPermissionStatus] =
@@ -114,6 +116,8 @@ function App() {
     canvas.height = videoRef.current.videoHeight;
   }, []);
 
+  const lastUpdateTime = useRef(0);
+
   const startDetectingFace = useCallback(async () => {
     setupCanvas();
     if (
@@ -123,47 +127,51 @@ function App() {
     ) {
       return;
     }
-    const detectFace = async () => {
+    const detectFace = async (timestamp: number) => {
       if (!isDetecting) {
         return;
       }
-      const detection = await faceapi.detectSingleFace(
-        videoRef.current!,
-        new faceapi.TinyFaceDetectorOptions(),
-      );
+      const elapsed = timestamp - lastUpdateTime.current;
 
-      if (detection) {
-        const box = detection.box;
-        const totalArea =
-          videoRef.current!.videoWidth * videoRef.current!.videoHeight;
-        const relativeArea = box.area / totalArea;
-        // const mappedArea = mapRange(relativeArea, 0.04, 0.38, 0, 1);
-        // const logArea = Math.log(mappedArea * 100 + 1) / Math.log(101);
-        // const frequency =
-        //   MIN_FREQUENCY + (MAX_FREQUENCY - MIN_FREQUENCY) * logArea;
-        const frequency = mapRange(
-          relativeArea,
-          0.04,
-          0.38,
-          MIN_FREQUENCY,
-          MAX_FREQUENCY,
+      if (elapsed > FRAME_INTERVAL) {
+        lastUpdateTime.current = timestamp - (elapsed % FRAME_INTERVAL);
+        const detection = await faceapi.detectSingleFace(
+            videoRef.current!,
+            new faceapi.TinyFaceDetectorOptions(),
         );
-        // const resizedDetections = faceapi.resizeResults(detection, {
-        //   width: canvasRef.current!.width,
-        //   height: canvasRef.current!.height,
-        // });
-        // if (resizedDetections) {
-        //   const canvas = canvasRef.current!;
-        //   const ctx = canvas.getContext("2d");
-        //   ctx?.clearRect(0, 0, canvas.width, canvas.height);
-        //   faceapi.draw.drawDetections(canvasRef.current!, resizedDetections);
-        // }
-        handleFrequencyChange([frequency]);
+        if (detection) {
+          const box = detection.box;
+          const totalArea =
+              videoRef.current!.videoWidth * videoRef.current!.videoHeight;
+          const relativeArea = box.area / totalArea;
+          // const mappedArea = mapRange(relativeArea, 0.04, 0.38, 0, 1);
+          // const logArea = Math.log(mappedArea * 100 + 1) / Math.log(101);
+          // const frequency =
+          //   MIN_FREQUENCY + (MAX_FREQUENCY - MIN_FREQUENCY) * logArea;
+          const frequency = mapRange(
+              relativeArea,
+              0.04,
+              0.38,
+              MIN_FREQUENCY,
+              MAX_FREQUENCY,
+          );
+          // const resizedDetections = faceapi.resizeResults(detection, {
+          //   width: canvasRef.current!.width,
+          //   height: canvasRef.current!.height,
+          // });
+          // if (resizedDetections) {
+          //   const canvas = canvasRef.current!;
+          //   const ctx = canvas.getContext("2d");
+          //   ctx?.clearRect(0, 0, canvas.width, canvas.height);
+          //   faceapi.draw.drawDetections(canvasRef.current!, resizedDetections);
+          // }
+          handleFrequencyChange([frequency]);
+        }
       }
       requestIdRef.current = requestAnimationFrame(detectFace);
     };
     setIsDetecting(true);
-    await detectFace();
+    requestIdRef.current = requestAnimationFrame(detectFace);
   }, [handleFrequencyChange, isDetecting, setupCanvas]);
 
   const stopDetectingFace = useCallback(() => {
